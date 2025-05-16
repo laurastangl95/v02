@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>MedTech Heroes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 1rem;
+      background: #f2f6fb;
+      text-align: center;
+    }
+
+    h1 {
+      color: #2a5d9f;
+      font-size: 1.5rem;
+    }
+
+    button {
+      font-size: 1rem;
+      padding: 10px 20px;
+      margin: 0.5rem;
+      background-color: #2a5d9f;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    input[type="text"] {
+      padding: 10px;
+      width: 80%;
+      max-width: 300px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      margin: 0.5rem auto;
+    }
+
+    #output {
+      margin-top: 1.5rem;
+      white-space: pre-line;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>MedTech Heroes</h1>
+
+  <div>
+    <button onclick="startRecording()">🎤 Spracheingabe</button>
+    <br />
+    <input type="text" id="textInput" placeholder="Text eingeben..." />
+    <button onclick="submitText()">Absenden</button>
+  </div>
+
+  <div id="output">Status: Bereit</div>
+
+  <script>
+    // 👉 Deine API-URL hier einfügen
+    const apiURL = "https://abc123xyz.execute-api.eu-central-1.amazonaws.com/prod/translate";
+
+    function updateOutput(original, translated) {
+      document.getElementById("output").textContent =
+        `Erkannt: ${original}\nÜbersetzt (→ Deutsch): ${translated}`;
+    }
+
+    async function sendToAPI(text) {
+      try {
+        document.getElementById("output").textContent = "Übersetze...";
+        const response = await fetch(apiURL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text })
+        });
+
+        if (!response.ok) throw new Error("API-Fehler");
+
+        const data = await response.json();
+        updateOutput(text, data.translated || "Keine Übersetzung erhalten");
+      } catch (error) {
+        document.getElementById("output").textContent = "Fehler: " + error.message;
+      }
+    }
+
+    function startRecording() {
+      if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+        alert("Dein Browser unterstützt keine Spracheingabe.");
+        return;
+      }
+
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = 'auto'; // ← automatische Spracherkennung durch API
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.start();
+
+      recognition.onresult = function(event) {
+        const text = event.results[0][0].transcript;
+        sendToAPI(text);
+      };
+
+      recognition.onerror = function(event) {
+        document.getElementById("output").textContent = "Mikrofonfehler: " + event.error;
+      };
+    }
+
+    function submitText() {
+      const input = document.getElementById("textInput").value.trim();
+      if (input.length >= 3) {
+        sendToAPI(input);
+      } else {
+        document.getElementById("output").textContent = "Bitte mindestens 3 Zeichen eingeben.";
+      }
+    }
+  </script>
+</body>
+</html>
